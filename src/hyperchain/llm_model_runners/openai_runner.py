@@ -1,5 +1,5 @@
 from typing import Optional, List, Final, Any
-from .llm_runner import LLMRunner, LLMResult
+from .llm_runner import LLMRunner, LLMChatRunner, LLMResult
 from openai._exceptions import AuthenticationError
 from openai import AsyncOpenAI
 from dataclasses import dataclass
@@ -49,7 +49,8 @@ class OpenAIRequest:
     This object should only be run once.
     """
 
-    result = None
+    result_raw = None
+    output = None
     exception = None
     max_tokens = 500
 
@@ -76,9 +77,62 @@ class OpenAIRequest:
 
     async def run(self, client: AsyncOpenAI):
         try:
-            self.result = await client.completions.with_raw_response.create(
-                model=self.model, prompt=self.prompt, **self.model_params
+            response = await client.completions.with_raw_response.create(
+                model=self.model,
+                prompt=self.prompt,
+                max_tokens=self.max_tokens,
+                **self.model_params,
             )
+            self.result_raw = dict(response.parse())
+            self.result_raw["headers"] = response.headers
+            self.output = self.result_raw["choices"][0].text
+        except BaseException as ex:
+            self.exception = ex
+        finally:
+            if self.done_event:
+                self.done_event.set()
+
+
+class OpenAIChatRequest:
+    result_raw = None
+    output = None
+    exception = None
+    max_tokens = 500
+
+    def __init__(self, api_key, model, chat, model_params):
+        self.api_key = api_key
+        self.model = model
+        self.chat = chat
+        self.model_params = model_params
+        if "max_tokens" in self.model_params:
+            self.max_tokens = model_params.get("max_tokens")
+            self.model_params.pop("max_tokens")
+        self.done_event = asyncio.Event()
+
+    @property
+    def encoding(self):
+        try:
+            return tiktoken.encoding_for_model(self.model)
+        except KeyError:
+            return tiktoken.get_encoding("cl100k_base")
+
+    @property
+    def guessed_token_count(self):
+        return self.max_tokens + sum(
+            len(self.encoding.encode(d["content"])) for d in self.chat
+        )
+
+    async def run(self, client: AsyncOpenAI):
+        try:
+            response = await client.chat.completions.with_raw_response.create(
+                model=self.model,
+                messages=self.chat,
+                max_tokens=self.max_tokens,
+                **self.model_params,
+            )
+            self.result_raw = dict(response.parse())
+            self.result_raw["headers"] = response.headers
+            self.output = self.result_raw["choices"][0].message.content
         except BaseException as ex:
             self.exception = ex
         finally:
@@ -177,8 +231,8 @@ class OpenAIRequestHandler:
                 await self._stop_workers()
 
         return LLMResult(
-            request.result.parse().choices[0].text,
-            extra_llm_outputs=dict(request.result.parse()),
+            request.output,
+            extra_llm_outputs=dict(request.result_raw),
         )
 
     async def _start_workers(self):
@@ -198,7 +252,6 @@ class OpenAIRequestHandler:
 
         self._workers.clear()
 
-    @asyncio.coroutine
     async def _worker(self):
         """
         Method defining the main worker coroutine.
@@ -254,8 +307,8 @@ class OpenAIRequestHandler:
 
             try:
                 await task.run(self._client)
-                if task.exception is None and task.result is not None:
-                    await self._on_response_headers(task.result.headers)
+                if task.exception is None and task.result_raw is not None:
+                    await self._on_response_headers(task.result_raw["headers"])
             finally:
                 self._queue.task_done()
                 async with self._total_guessed_count_lock:
@@ -286,6 +339,38 @@ class OpenAIRunner(LLMRunner):
             api_key=self.api_key,
             model=self.model,
             prompt=prompt,
+            model_params=self.model_params,
+        )
+        return await self._request_handler.send_request(request)
+
+    def _get_error_handlers(self):
+        return self._error_handlers
+
+
+class OpenAIChatRunner(LLMChatRunner):
+    api_key: str
+    result_chain: List[str] = []
+    model: str
+    model_params: Optional[dict]
+    _request_handler: OpenAIRequestHandler = None
+
+    def __init__(
+        self,
+        api_key: str = _get_api_key_from_env(),
+        model: str = "gpt-3.5-turbo",
+        model_params: dict = {},
+    ):
+        self.model_params = model_params
+        self.api_key = api_key
+        self.model = model
+        self._request_handler = OpenAIRequestHandler.get(api_key)
+        self._error_handlers = [OpenAIAutheticationErrorHandler(self.api_key)]
+
+    async def async_run(self, messages: List[dict]):
+        request = OpenAIChatRequest(
+            api_key=self.api_key,
+            model=self.model,
+            chat=messages,
             model_params=self.model_params,
         )
         return await self._request_handler.send_request(request)

@@ -11,3 +11,12 @@ class LLMRunner(ABC):
 
     def _get_error_handlers(self) -> List[BaseErrorHandler]:
         return []
+
+
+class LLMChatRunner(ABC):
+    @abstractmethod
+    async def async_run(self, chat: List[dict]) -> LLMResult:
+        pass
+
+    def _get_error_handlers(self) -> List[BaseErrorHandler]:
+        return []
