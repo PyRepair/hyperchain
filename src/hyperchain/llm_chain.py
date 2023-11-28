@@ -68,66 +68,80 @@ class LLMChain(Chain):
         handlers = self.llm_runner._get_error_handlers()
         prompt = self.template.format(**inputs_list)
         while True:
+            holds_a_lock = False
             try:
                 await self._error_handling_lock.acquire()
                 holds_a_lock = True
 
                 try:
-                    if not self._rate_limited_state:
-                        holds_a_lock = False
-                        self._error_handling_lock.release()
                     for handler in handlers:
                         handler.on_run()
 
+                    if not self._rate_limited_state:
+                        holds_a_lock = False
+                        self._error_handling_lock.release()
+
                     result = await self.llm_runner.async_run(prompt)
 
-                    for handler in handlers:
-                        handler.on_success(result)
+                    if not holds_a_lock:
+                        async with self._error_handling_lock:
+                            for handler in handlers:
+                                handler.on_success(result)
+                    else:
+                        for handler in handlers:
+                            handler.on_success(result)
 
                     if holds_a_lock:
                         holds_a_lock = False
                         self._rate_limited_state = False
                         self._error_handling_lock.release()
                     return result
+
                 finally:
                     if holds_a_lock:
+                        holds_a_lock = False
                         self._error_handling_lock.release()
+
             except BaseException as exception:
-                async with self._error_handling_lock:
-                    if self._rate_limited_state:
-                        continue
+                if not holds_a_lock:
+                    await self._error_handling_lock.acquire()
+                    holds_a_lock = True
 
-                    error_handler = None
-                    for handler in handlers:
-                        if any(
-                            isinstance(exception, handled_exception)
-                            for handled_exception in handler.handled_error_types
-                        ):
-                            error_handler = handler
-                            break
+                error_handler = None
+                for handler in handlers:
+                    if any(
+                        isinstance(exception, handled_exception)
+                        for handled_exception in handler.handled_error_types
+                    ):
+                        error_handler = handler
+                        break
 
-                    if error_handler is None:
-                        raise exception
-
-                    error_response = error_handler.on_error(exception)
-
-                    if isinstance(error_response, ThrowExceptionResponse):
-                        raise error_response.exception
-
-                    if isinstance(error_response, WaitResponse):
-                        logging.warning(
-                            f"Got exception: {exception.__class__.__name__}\n"
-                            f"Retrying in {str(error_response.delay)}s... "
-                        )
-                        self._rate_limited_state = True
-                        await asyncio.sleep(error_response.delay)
-                        continue
-
-                    logging.error(
-                        "Unknown error handling response"
-                        f"{error_response.__class__.__name__}."
-                    )
+                if error_handler is None:
                     raise exception
+
+                error_response = error_handler.on_error(exception)
+
+                if isinstance(error_response, ThrowExceptionResponse):
+                    raise error_response.exception
+
+                if isinstance(error_response, WaitResponse):
+                    logging.warning(
+                        f"Got exception: {exception.__class__.__name__}\n"
+                        f"Retrying in {error_response.delay:.2f}s... "
+                    )
+                    self._rate_limited_state = True
+                    await asyncio.sleep(error_response.delay)
+                    continue
+
+                logging.error(
+                    "Unknown error handling response"
+                    f"{error_response.__class__.__name__}."
+                )
+                raise
+            finally:
+                if holds_a_lock:
+                    holds_a_lock = False
+                    self._error_handling_lock.release()
 
     def __add__(self, other) -> Chain:
         if isinstance(other, LLMChainSequence):
