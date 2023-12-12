@@ -1,10 +1,12 @@
 from typing import Optional, List, Final, Any
 from .llm_runner import LLMRunner, LLMChatRunner, LLMResult
-from openai._exceptions import AuthenticationError
+from .prompt_response_length_predictor import predict_response_length
+from openai._exceptions import AuthenticationError, APIError, APIConnectionError
 from openai import AsyncOpenAI
 from dataclasses import dataclass
 from .error_handler import (
     BaseErrorHandler,
+    WaitResponse,
     ThrowExceptionResponse,
     ErrorHandlerResponse,
 )
@@ -52,7 +54,7 @@ class OpenAIRequest:
     result_raw = None
     output = None
     exception = None
-    max_tokens = 500
+    max_tokens = None
 
     def __init__(self, api_key, model, prompt, model_params):
         self.api_key = api_key
@@ -73,16 +75,27 @@ class OpenAIRequest:
 
     @property
     def guessed_token_count(self):
-        return self.max_tokens + len(self.encoding.encode(self.prompt))
+        input_length = len(self.encoding.encode(self.prompt))
+        if self.max_tokens is not None:
+            return max(self.max_tokens, predict_response_length([self.prompt], [input_length])[0]) + input_length
+        return predict_response_length([self.prompt])[0] + input_length
 
     async def run(self, client: AsyncOpenAI):
         try:
-            response = await client.completions.with_raw_response.create(
-                model=self.model,
-                prompt=self.prompt,
-                max_tokens=self.max_tokens,
-                **self.model_params,
-            )
+            if self.max_tokens is not None:
+                response = await client.completions.with_raw_response.create(
+                    model=self.model,
+                    prompt=self.prompt,
+                    max_tokens=self.max_tokens,
+                    **self.model_params,
+                )
+            else:
+                response = await client.completions.with_raw_response.create(
+                    model=self.model,
+                    prompt=self.prompt,
+                    max_tokens=predict_response_length([self.prompt])[0] + 80,
+                    **self.model_params,
+                )
             self.result_raw = dict(response.parse())
             self.result_raw["headers"] = response.headers
             self.output = self.result_raw["choices"][0].text
@@ -97,7 +110,7 @@ class OpenAIChatRequest:
     result_raw = None
     output = None
     exception = None
-    max_tokens = 500
+    max_tokens = None
 
     def __init__(self, api_key, model, chat, model_params):
         self.api_key = api_key
@@ -118,9 +131,13 @@ class OpenAIChatRequest:
 
     @property
     def guessed_token_count(self):
-        return self.max_tokens + sum(
-            len(self.encoding.encode(d["content"])) for d in self.chat
-        )
+        input_lens = [len(self.encoding.encode(d["content"])) for d in self.chat]
+        predicted_response_length = predict_response_length([self.chat[-1]["content"]],[input_lens[-1]])[0]
+        input_len_sum = sum(input_lens)
+
+        if self.max_tokens is not None:
+            return max(self.max_tokens, predicted_response_length) + input_len_sum
+        return predicted_response_length + input_len_sum
 
     async def run(self, client: AsyncOpenAI):
         try:
@@ -332,7 +349,7 @@ class OpenAIRunner(LLMRunner):
         self.api_key = api_key
         self.model = model
         self._request_handler = OpenAIRequestHandler.get(api_key)
-        self._error_handlers = [OpenAIAutheticationErrorHandler(self.api_key)]
+        self._error_handlers = [OpenAIAutheticationErrorHandler(self.api_key), OpenAIApiErrorHandler()]
 
     async def async_run(self, prompt: str):
         request = OpenAIRequest(
@@ -364,7 +381,7 @@ class OpenAIChatRunner(LLMChatRunner):
         self.api_key = api_key
         self.model = model
         self._request_handler = OpenAIRequestHandler.get(api_key)
-        self._error_handlers = [OpenAIAutheticationErrorHandler(self.api_key)]
+        self._error_handlers = [OpenAIAutheticationErrorHandler(self.api_key), OpenAIApiErrorHandler()]
 
     async def async_run(self, messages: List[dict]):
         request = OpenAIChatRequest(
@@ -381,6 +398,38 @@ class OpenAIChatRunner(LLMChatRunner):
 
 # Here we define the error handlers for the errors we may encounter
 # when interacting with OpenAI's API
+class OpenAIApiErrorHandler(BaseErrorHandler):
+    handled_error_types = [
+        APIError,
+        APIConnectionError
+    ]
+
+    _current_attempt = 0
+    _max_attempts = 5
+    _mult = 0.4
+    _base = 1.5
+
+    _requests_sent = 0
+    _responses_received = 0
+    _increase_since_request = 0
+
+    def on_run(self):
+        self._requests_sent += 1
+
+    def on_error(self, exception):
+        self._responses_received += 1
+        if self._current_attempt < self._max_attempts:
+            if self._responses_received >= self._increase_since_request:
+                self._current_attempt += 1
+                self._increase_since_request = self._requests_sent + 1
+
+            return WaitResponse(delay=self._mult * pow(self._base, self._current_attempt))
+
+        return ThrowExceptionResponse(exception)
+
+    def on_success(self, result):
+        self._responses_received += 1
+        self._current_attempt = 0
 
 
 class OpenAIAutheticationErrorHandler(BaseErrorHandler):

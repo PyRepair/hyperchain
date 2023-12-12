@@ -11,7 +11,7 @@ from .llm_model_runners.error_handler import (
     ThrowExceptionResponse,
 )
 import asyncio
-from time import sleep
+from time import sleep, time
 
 
 class Chain(ABC):
@@ -53,6 +53,7 @@ class LLMChain(Chain):
     _error_handling_lock = asyncio.Lock()
 
     _rate_limited_state = False
+    _wait_until = 0
 
     def __init__(
         self,
@@ -72,6 +73,14 @@ class LLMChain(Chain):
             try:
                 await self._error_handling_lock.acquire()
                 holds_a_lock = True
+                
+                c_time = time()
+                if self._wait_until > c_time:
+                    holds_a_lock = False
+                    self._error_handling_lock.release()
+                    await asyncio.sleep(self._wait_until - c_time)
+                    continue
+                
 
                 try:
                     for handler in handlers:
@@ -103,6 +112,7 @@ class LLMChain(Chain):
                         self._error_handling_lock.release()
 
             except BaseException as exception:
+                c_time = time()
                 if not holds_a_lock:
                     await self._error_handling_lock.acquire()
                     holds_a_lock = True
@@ -125,12 +135,12 @@ class LLMChain(Chain):
                     raise error_response.exception
 
                 if isinstance(error_response, WaitResponse):
-                    logging.warning(
-                        f"Got exception: {exception.__class__.__name__}\n"
-                        f"Retrying in {error_response.delay:.2f}s... "
-                    )
-                    self._rate_limited_state = True
-                    await asyncio.sleep(error_response.delay)
+                    if self._wait_until < c_time + error_response.delay:
+                        logging.warning(
+                            f"Got exception: {exception.__class__.__name__}\n"
+                            f"Retrying in {error_response.delay:.2f}s... "
+                        )
+                        self._wait_until = c_time + error_response.delay
                     continue
 
                 logging.error(

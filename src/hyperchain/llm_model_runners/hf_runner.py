@@ -36,7 +36,7 @@ class HuggingFaceRunner(LLMRunner):
         self.json_result_name = json_result_name
         self.model_args = model_args
         self.api_key = api_key
-        self._error_handlers = [HuggingFaceHttpErrorHandler(api_key)]
+        self._error_handlers = [HuggingFaceHttpErrorHandler()]
 
     async def async_run(self, prompt: str):
         if self.api_key is not None and len(self.api_key) > 0:
@@ -71,9 +71,6 @@ class HuggingFaceHttpErrorHandler(BaseErrorHandler):
     _requests_sent = 0
     _responses_received = 0
     _increase_since_request = 0
-
-    def __init__(self, api_key: str):
-        self.api_key = api_key
 
     def on_run(self):
         self._requests_sent += 1

@@ -31,7 +31,7 @@ class Template(Generic[T], ABC):
 
     @classmethod
     @abstractmethod
-    def from_file(cls, file_name: str) -> Template[T]:
+    def from_file(cls, file_to_read: file) -> Template[T]:
         """
         Load template from file
         """
@@ -90,10 +90,8 @@ class StringTemplate(Template[str]):
         return StringTemplate(input_string)
 
     @classmethod
-    def from_file(cls, file_name: str) -> Template[str]:
-        file_to_read = open(file_name, "r")
+    def from_file(cls, file_to_read: file) -> Template[str]:
         string_data = file_to_read.read()
-        file_to_read.close()
 
         return StringTemplate(string_data)
 
@@ -103,6 +101,8 @@ class StringTemplate(Template[str]):
         file_to_write.close()
 
     def _format(self, **kwargs: Any) -> str:
+        if len(kwargs) == 0:
+            return self.input_string
         return self.formatter.format(self.input_string, **kwargs)
 
     def __add__(self, other: Any) -> Template[str]:
@@ -143,9 +143,8 @@ class ChatTemplate(Template[List[dict]]):
         return ChatTemplate(input_list)
 
     @classmethod
-    def from_file(cls, file_name: str) -> Template[List[dict]]:
-        with open(file_name, "rb") as f:
-            return ChatTemplate(pickle.load(f))
+    def from_file(cls, file_to_read: file) -> Template[List[dict]]:
+        return ChatTemplate(pickle.load(file_to_read))
 
     def to_file(self, file_name: str):
         with open(file_name, "wb") as f:
