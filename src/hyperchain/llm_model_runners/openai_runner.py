@@ -78,7 +78,7 @@ class OpenAIRequest:
         input_length = len(self.encoding.encode(self.prompt))
         if self.max_tokens is not None:
             return max(self.max_tokens, predict_response_length([self.prompt], [input_length])[0]) + input_length
-        return predict_response_length([self.prompt])[0] + input_length
+        return predict_response_length([self.prompt], [input_length])[0] + input_length
 
     async def run(self, client: AsyncOpenAI):
         try:
@@ -93,7 +93,7 @@ class OpenAIRequest:
                 response = await client.completions.with_raw_response.create(
                     model=self.model,
                     prompt=self.prompt,
-                    max_tokens=predict_response_length([self.prompt])[0] + 80,
+                    max_tokens=int(predict_response_length([self.prompt], [len(self.encoding.encode(self.prompt))])[0] + 50),
                     **self.model_params,
                 )
             self.result_raw = dict(response.parse())
