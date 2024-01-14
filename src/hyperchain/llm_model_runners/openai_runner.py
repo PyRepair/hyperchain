@@ -1,6 +1,6 @@
 from typing import Optional, List, Final, Any
 from .llm_runner import LLMRunner, LLMChatRunner, LLMResult
-from .prompt_response_length_predictor import predict_response_length
+from .response_length_prediction.prediction import predict_response_length
 from openai._exceptions import AuthenticationError, APIError, APIConnectionError
 from openai import AsyncOpenAI
 from dataclasses import dataclass
