@@ -1,4 +1,5 @@
 from .llm_runner import LLMRunner, LLMResult
+from transformers import T5ForConditionalGeneration, AutoTokenizer
 import logging
 
 
@@ -7,14 +8,8 @@ class T5ConditionalModelRunner(LLMRunner):
         self,
         model,
         tokenizer = None,
+        model_kwargs = {},
     ):
-        if isinstance(model, str) or isinstance(tokenizer, str) or tokenizer is None:
-            try:
-                from transformers import T5ForConditionalGeneration, AutoTokenizer
-            except ImportError:
-                logging.critical("To use locals model please pip install transformers or provide model and tokenizer object.")
-                raise
-        
         if isinstance(model, str):
             self.model = T5ForConditionalGeneration.from_pretrained(model)
         else:
@@ -31,6 +26,7 @@ class T5ConditionalModelRunner(LLMRunner):
         else:
             self.tokenizer = tokenizer
 
+        self.model_kwargs = model_kwargs
         self.sentinel_tokens_set = set(self.tokenizer.convert_tokens_to_ids([token for token in self.tokenizer.additional_special_tokens if "extra_id" in token]))
 
     def _apply_response(self, prompt, response):
@@ -65,7 +61,7 @@ class T5ConditionalModelRunner(LLMRunner):
 
     async def async_run(self, prompt: str):
         input_ids  = self.tokenizer(prompt, return_tensors="pt").input_ids
-        response = self.model.generate(input_ids)
+        response = self.model.generate(input_ids, **self.model_kwargs)
         decoded_response = self.tokenizer.decode(self._apply_response(input_ids, response)[0], skip_special_tokens=True)
         return LLMResult(decoded_response, extra_llm_outputs={"input_ids": input_ids, "response": response})
 

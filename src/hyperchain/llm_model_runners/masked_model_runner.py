@@ -1,4 +1,5 @@
 from .llm_runner import LLMRunner, LLMResult
+from transformers import AutoModelForMaskedLM, AutoTokenizer, pipeline        
 import logging
 import numpy as np
 
@@ -7,9 +8,8 @@ class MaskedModelRunner(LLMRunner):
         self,
         model,
         tokenizer = None,
+        model_kwargs = {},
     ):
-        from transformers import AutoModelForMaskedLM, AutoTokenizer, pipeline
-        
         if isinstance(model, str):
             self.model = AutoModelForMaskedLM.from_pretrained(model)
         else:
@@ -25,8 +25,9 @@ class MaskedModelRunner(LLMRunner):
                 raise ValueError("Tokenizer not specified.")
         else:
             self.tokenizer = tokenizer
-        
-        self.fill_mask = pipeline('fill-mask', model=self.model, tokenizer=self.tokenizer)
+
+        self.model_kwargs = model_kwargs
+        self.fill_mask = pipeline('fill-mask', model=self.model, tokenizer=self.tokenizer, model_kwargs=self.model_kwargs)
 
     async def async_run(self, prompt: str):
         predictions = self.fill_mask(prompt)
