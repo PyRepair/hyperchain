@@ -1,6 +1,9 @@
-from typing import List, Any, Dict, Optional
+from typing import List, Any, Dict, Optional, Callable
 from abc import ABC, abstractmethod
+
+import inspect
 import logging
+
 from .prompt_templates import Template
 from .llm_runners.llm_result import LLMResult
 from .llm_runners.llm_runner import LLMRunner
@@ -156,9 +159,38 @@ class LLMChain(Chain):
     def __add__(self, other) -> Chain:
         if isinstance(other, LLMChainSequence):
             return LLMChainSequence([self] + other.chains, other.output_name)
-
+        
+        if (not isinstance(other, Chain)) and callable(other):
+            return LLMChainSequence([self, FunctionChain(other)], "result")
+        
         return LLMChainSequence([self, other], other.output_name)
 
+class FunctionChain(Chain):
+    function: Callable
+    output_name: str
+    
+    def __init__(
+        self,
+        function: Callable,
+        output_name: str = "result",
+    ):
+        self.function = function
+        self.output_name = output_name
+
+    async def async_run(self, **inputs_list: Any):
+        result = self.function(inputs_list)
+        if inspect.isawaitable(result):
+            result = await result
+        return LLMResult(result)
+
+    def __add__(self, other) -> Chain:
+        if isinstance(other, LLMChainSequence):
+            return LLMChainSequence([self] + other.chains, other.output_name)
+        
+        if (not isinstance(other, Chain)) and callable(other):
+            return LLMChainSequence([self, FunctionChain(other)], "result")
+
+        return LLMChainSequence([self, other], other.output_name)
 
 class LLMChainSequence(LLMChain):
     chains: List[LLMChain]
@@ -189,5 +221,8 @@ class LLMChainSequence(LLMChain):
             return LLMChainSequence(
                 self.chains + other.chains, other.output_name
             )
+
+        if (not isinstance(other, Chain)) and callable(other):
+            return LLMChainSequence(self.chains + [FunctionChain(other)], "result")
 
         return LLMChainSequence(self.chains + [other], other.output_name)
