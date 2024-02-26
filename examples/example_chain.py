@@ -1,6 +1,6 @@
 from hyperchain.prompt_templates import StringTemplate
 from hyperchain.llm_chain import LLMChain
-from hyperchain.llm_model_runners.openai_runner import OpenAIRunner
+from hyperchain.llm_model_runners import OpenAIRunner
 
 template_prepare = StringTemplate(
     "Answer the following question:\n{question}\n\nShort answer is:\n"
