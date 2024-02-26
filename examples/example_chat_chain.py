@@ -1,6 +1,6 @@
 from hyperchain.prompt_templates import ChatTemplate
 from hyperchain.llm_chain import LLMChain
-from hyperchain.llm_model_runners import OpenAIChatRunner
+from hyperchain.llm_runners import OpenAIChatRunner
 
 chat_template = ChatTemplate(
     [

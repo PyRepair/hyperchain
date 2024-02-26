@@ -2,9 +2,9 @@ from typing import List, Any, Dict, Optional
 from abc import ABC, abstractmethod
 import logging
 from .prompt_templates import Template
-from .llm_model_runners.llm_result import LLMResult
-from .llm_model_runners.llm_runner import LLMRunner
-from .llm_model_runners.error_handler import (
+from .llm_runners.llm_result import LLMResult
+from .llm_runners.llm_runner import LLMRunner
+from .llm_runners.error_handler import (
     BaseErrorHandler,
     ErrorHandlerResponse,
     WaitResponse,

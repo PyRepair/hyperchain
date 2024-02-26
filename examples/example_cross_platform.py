@@ -1,6 +1,6 @@
 from hyperchain.prompt_templates import StringTemplate
 from hyperchain.llm_chain import LLMChain
-from hyperchain.llm_model_runners import HuggingFaceRunner, OpenAIRunner
+from hyperchain.llm_runners import HuggingFaceRunner, OpenAIRunner
 
 template_hf = StringTemplate("Answer the following question: {question}\n")
 

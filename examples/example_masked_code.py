@@ -1,5 +1,5 @@
 from hyperchain.llm_chain import LLMChain
-from hyperchain.llm_model_runners import T5ConditionalModelRunner, MaskedModelRunner
+from hyperchain.llm_runners import T5ConditionalModelRunner, MaskedModelRunner
 from hyperchain.prompt_templates import MaskToSentinelTemplate
 
 llm_chain_codet5 = LLMChain(
