@@ -1,5 +1,5 @@
 from hyperchain.prompt_templates import StringTemplate
-from hyperchain.llm_chain import LLMChain
+from hyperchain.chain import LLMChain
 from hyperchain.llm_runners import OpenAIRunner
 
 template_prepare = StringTemplate(
