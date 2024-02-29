@@ -5,7 +5,7 @@ from .chain_result import ChainResult
 from .chain import Chain
 from .chain_sequence import ChainSequence
 
-from ..prompt_templates import Template
+from ..prompt_templates import Template, StringTemplate
 from ..llm_runners.llm_runner import LLMRunner
 from ..llm_runners.error_handler import (
     WaitResponse,
@@ -30,9 +30,15 @@ class LLMChain(Chain):
         llm_runner: LLMRunner,
         output_name: str = "result",
     ):
+        if isinstance(template, str):
+            template = StringTemplate(input_string=template)
+        
         self.template = template
         self.llm_runner = llm_runner
         self.output_name = output_name
+
+        self.output_keys = [output_name]
+        self.required_keys = template.required_keys
 
     async def async_run(self, **inputs_dict: Any) -> ChainResult:
         handlers = self.llm_runner._get_error_handlers()

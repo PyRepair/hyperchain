@@ -8,6 +8,7 @@ T = TypeVar("T")
 
 class Template(Generic[T], ABC):
     input_variables: Optional[List[str]]
+    required_keys: Optional[List[str]] = None
 
     def __init__(self, input_variables=None):
         if input_variables is not None:

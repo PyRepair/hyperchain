@@ -17,6 +17,11 @@ class StringTemplate(Template[str]):
         super().__init__(input_variables)
         self.input_string = input_string
         self.formatter = formatter
+        self.required_keys = [key for _, key, _, _ in formatter.parse(input_string) if key is not None]
+    
+    @classmethod
+    def from_input(cls, input_string: str) -> StringTemplate:
+        return StringTemplate(input_string)
 
     def to_file(self, file_name: str):
         file_to_write = open(file_name, "w")

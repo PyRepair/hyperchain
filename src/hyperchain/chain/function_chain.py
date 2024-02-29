@@ -1,4 +1,4 @@
-from typing import List, Any, Callable
+from typing import List, Any, Callable, Optional
 
 import inspect
 import asyncio
@@ -13,8 +13,12 @@ class FunctionChain(Chain):
     def __init__(
         self,
         function: Callable,
+        required_keys: Optional[List[str]] = None,
+        output_keys: Optional[List[str]] = None,
     ):
         self.function = function
+        self.required_keys = required_keys
+        self.output_keys = output_keys
     
     def run(self, **inputs_dict: Any):
         result = self.function(inputs_dict)

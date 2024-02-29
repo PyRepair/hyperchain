@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Optional
 from abc import ABC, abstractmethod
 
 import asyncio
@@ -8,6 +8,9 @@ from .chain_result import ChainResult
 from ..prompt_templates import Template
 
 class Chain(ABC):
+    required_keys: Optional[List[str]] = None
+    output_keys: Optional[List[str]] = None
+
     def run(self, **inputs_dict: Any) -> ChainResult:
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(self.async_run(**inputs_dict))

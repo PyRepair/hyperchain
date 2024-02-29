@@ -17,6 +17,10 @@ class ChatTemplate(Template[List[dict]]):
         super().__init__(input_variables)
         self.input_list = input_list
         self.formatter = formatter
+        self.required_keys = []
+        for chat_element in self.input_list:
+            if "content" in chat_element:
+                self.required_keys += [key for _, key, _, _ in formatter.parse(chat_element["content"]) if key is not None]
 
     @classmethod
     def from_input(cls, input_list: List[dict]) -> Template[List[dict]]:

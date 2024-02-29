@@ -17,5 +17,5 @@ llm_chain_codebert = LLMChain(
     )
 )
 
-print(llm_chain_codet5.run(masked_code="def greet_user(<mask>: User):\n  print('Hi,' + <mask>)\n").output)
-print(llm_chain_codebert.run(masked_code="def greet_user(<mask>: User):\n  print('Hi,' + <mask>.<mask>)\n").output)
+print(llm_chain_codet5.run(masked_code="def greet_user(<mask>: User):\n  print('Hi,' + <mask>)\n").result)
+print(llm_chain_codebert.run(masked_code="def greet_user(<mask>: User):\n  print('Hi,' + <mask>.<mask>)\n").result)
