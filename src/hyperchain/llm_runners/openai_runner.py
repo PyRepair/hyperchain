@@ -1,5 +1,5 @@
 from typing import Optional, List, Final, Any
-from .llm_runner import LLMRunner, LLMChatRunner, LLMResult
+from .llm_runner import LLMRunner, LLMResult
 from .response_length_prediction.prediction import predict_response_length
 from openai._exceptions import AuthenticationError, APIError, APIConnectionError
 from openai import AsyncOpenAI
@@ -364,7 +364,7 @@ class OpenAIRunner(LLMRunner):
         return self._error_handlers
 
 
-class OpenAIChatRunner(LLMChatRunner):
+class OpenAIChatRunner(LLMRunner):
     api_key: str
     result_chain: List[str] = []
     model: str
