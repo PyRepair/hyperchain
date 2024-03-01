@@ -8,7 +8,6 @@ llm_chain_hf = LLMChain(
     template=template_hf,
     llm_runner=HuggingFaceRunner(
         model="gpt2",
-        api_key="Hugging Face Hub API KEY",
     ),
     output_name="answer",
 )
@@ -27,4 +26,4 @@ llm_chain_openai = LLMChain(
 
 combined_chain = llm_chain_hf + llm_chain_openai
 
-print(combined_chain.run(question="How are you doing?").output)  # Run chain
+print(combined_chain.run(question="How are you doing?").result)  # Run chain

@@ -19,7 +19,7 @@ function_map_chain = FunctionMapChain([
     ("result", extract_words, "word_list")
 ])
 
-result = (llm_chain + function_map_chain).run(masked_code="def greet_user(<mask>: User):\n  print('Hi,' + <mask>)\n")
+chain_result = (llm_chain + function_map_chain).run(masked_code="def greet_user(<mask>: User):\n  print('Hi,' + <mask>)\n")
 
-print(result.result)
-print(result.word_list)
+print(chain_result.result)
+print(chain_result.word_list)

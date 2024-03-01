@@ -28,4 +28,4 @@ llm_chain_guess = LLMChain(
 
 llm_chain = llm_chain_prepare + llm_chain_guess
 
-print(llm_chain.run(question="What is APR?").output)  # Run chain of querries
+print(llm_chain.run(question="What is APR?").result)  # Run chain of querries

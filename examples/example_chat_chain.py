@@ -37,8 +37,8 @@ response = llm_chain.run(
 print(
     chat_template_result.format(
         question="How are you?",
-        answer=response.previous_result.output,
+        answer=response.previous_result.answer,
         question2="What can you assist me with?",
-        answer2=response.output,
+        answer2=response.result,
     )
 )
