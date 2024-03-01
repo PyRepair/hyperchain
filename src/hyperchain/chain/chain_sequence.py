@@ -73,7 +73,7 @@ class ChainSequence(Chain):
         
         inputs_dict_with_priority = PriorityDict(inputs_dict, -1)
 
-        await asyncio.gather(*[element.notify_done(inputs_dict_with_priority) for element in sequence_elements[::-1]])
+        await asyncio.gather(*[element.notify_done(inputs_dict_with_priority) for element in sequence_elements])
 
         previous_result = None
         priority_dict = PriorityDict(inputs_dict, -1)
@@ -104,7 +104,7 @@ def chains_to_sequence_elements(chains):
     sequence_elements = []
     for index, chain in enumerate(chains):
         dependency_list = list(range(index))
-        if chain.required_keys:
+        if chain.required_keys is not None:
             dependency_list = list({dependency_dict[key] for key in chain.required_keys if key in dependency_dict} | unspecified_outputs)
         
         element = ChainSequenceElement(len(dependency_list) + 1, chain, index)
