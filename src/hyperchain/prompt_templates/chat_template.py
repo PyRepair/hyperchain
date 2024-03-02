@@ -11,11 +11,9 @@ class ChatTemplate(Template[List[dict]]):
     def __init__(
         self,
         input_list: List[dict],
-        input_variables: Optional[List[str]] = None,
         formatter: Formatter = Formatter(),
         message_content_key: str = "content"
     ):
-        super().__init__(input_variables)
         self.input_list = input_list
         self.formatter = formatter
         self.message_content_key = message_content_key
@@ -28,7 +26,7 @@ class ChatTemplate(Template[List[dict]]):
     def from_input(cls, input_list: List[dict]) -> Template[List[dict]]:
         return ChatTemplate(input_list)
 
-    def _format(self, **kwargs: Any) -> List[dict]:
+    def format(self, **kwargs: Any) -> List[dict]:
         answer = []
         for chat_element in self.input_list:
             chat_element_copy = chat_element.copy()
@@ -43,14 +41,12 @@ class ChatTemplate(Template[List[dict]]):
         if isinstance(other, ChatTemplate):
             return ChatTemplate(
                 self.input_list + other.input_list,
-                self.input_variables + other.input_variables,
                 self.formatter,
             )
 
         if isinstance(other, list):
             return ChatTemplate(
                 self.input_list + other,
-                self.input_variables,
                 self.formatter,
             )
 

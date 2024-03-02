@@ -7,20 +7,7 @@ T = TypeVar("T")
 
 
 class Template(Generic[T], ABC):
-    input_variables: Optional[List[str]]
     required_keys: Optional[List[str]] = None
-
-    def __init__(self, input_variables=None):
-        if input_variables is not None:
-            invalid_input_variables = [
-                ivar for ivar in input_variables if not ivar.isidentifier()
-            ]
-            if len(invalid_input_variables) > 0:
-                raise ValueError(
-                    "Invalid input variable names provided:"
-                    f" {invalid_input_variables}"
-                )
-        self.input_variables = input_variables
 
     @classmethod
     @abstractmethod
@@ -45,25 +32,10 @@ class Template(Generic[T], ABC):
             pickle.dump(self, f)
 
     @abstractmethod
-    def _format(self, **kwargs: Any) -> str:
+    def format(self, **kwargs: Any) -> str:
         """
         Format string to be passed to the model
         """
-
-    def format(self, **kwargs: Any) -> str:
-        if self.input_variables is None:
-            return self._format(**kwargs)
-
-        missing_input_variables = [
-            arg for arg in self.input_variables if not arg in kwargs.keys()
-        ]
-        if len(missing_input_variables) == 0:
-            return self._format(**kwargs)
-
-        raise ValueError(
-            "Following required input variables weren't provided:"
-            f"{missing_input_variables}"
-        )
 
     def __add__(self, other: Any) -> Template[T]:
         """

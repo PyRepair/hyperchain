@@ -8,14 +8,13 @@ class MaskToSentinelTemplate(StringTemplate):
     def __init__(
         self,
         input_string: str,
-        input_variables: Optional[List[str]] = None,
         formatter: Formatter = Formatter(),
         mask_token: str = "<mask>",
         sentinel_token_template: str = "<extra_id_{}>",
         sentinel_start_index = 0,
         sentinel_end_index = 99,
     ):
-        super().__init__(input_string, input_variables, formatter)
+        super().__init__(input_string, formatter)
         self.mask_token = mask_token
         self.sentinel_token_template = sentinel_token_template
         self.sentinel_start_index = sentinel_start_index
@@ -36,7 +35,7 @@ class MaskToSentinelTemplate(StringTemplate):
         
         return response
 
-    def _format(self, **kwargs: Any) -> str:
+    def format(self, **kwargs: Any) -> str:
         if len(kwargs) == 0:
             return self._apply_sentinel_tokens(self.input_string)
         return self._apply_sentinel_tokens(self.formatter.format(self.input_string, **kwargs))
