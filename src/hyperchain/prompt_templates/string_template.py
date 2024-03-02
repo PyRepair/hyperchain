@@ -25,6 +25,12 @@ class StringTemplate(Template[str]):
         file_to_write = open(file_name, "w")
         file_to_write.write(self.input_string)
         file_to_write.close()
+    
+    @classmethod
+    def from_file(cls, file_name: str):
+        file_to_write = open(file_name, "r")
+        return cls(file_to_write.read())
+        file_to_write.close()
 
     def format(self, **kwargs: Any) -> str:
         if len(kwargs) == 0:

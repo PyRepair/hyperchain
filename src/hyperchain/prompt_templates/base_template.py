@@ -17,7 +17,7 @@ class Template(Generic[T], ABC):
         """
 
     @classmethod
-    def from_file(cls, file_to_read: file) -> Template[T]:
+    def from_file(cls, file_to_read: str) -> Template[T]:
         """
         Load template from file
         """
