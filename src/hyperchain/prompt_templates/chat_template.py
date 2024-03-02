@@ -13,14 +13,16 @@ class ChatTemplate(Template[List[dict]]):
         input_list: List[dict],
         input_variables: Optional[List[str]] = None,
         formatter: Formatter = Formatter(),
+        message_content_key: str = "content"
     ):
         super().__init__(input_variables)
         self.input_list = input_list
         self.formatter = formatter
+        self.message_content_key = message_content_key
         self.required_keys = []
         for chat_element in self.input_list:
-            if "content" in chat_element:
-                self.required_keys += [key for _, key, _, _ in formatter.parse(chat_element["content"]) if key is not None]
+            if self.message_content_key in chat_element:
+                self.required_keys += [key for _, key, _, _ in formatter.parse(chat_element[self.message_content_key]) if key is not None]
 
     @classmethod
     def from_input(cls, input_list: List[dict]) -> Template[List[dict]]:
@@ -30,9 +32,9 @@ class ChatTemplate(Template[List[dict]]):
         answer = []
         for chat_element in self.input_list:
             chat_element_copy = chat_element.copy()
-            if "content" in chat_element_copy:
-                chat_element_copy["content"] = self.formatter.format(
-                    chat_element_copy["content"], **kwargs
+            if self.message_content_key in chat_element_copy:
+                chat_element_copy[self.message_content_key] = self.formatter.format(
+                    chat_element_copy[self.message_content_key], **kwargs
                 )
             answer.append(chat_element_copy)
         return answer
