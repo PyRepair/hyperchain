@@ -25,7 +25,7 @@ print(
     llm_chain.run_multiple(
         *list(
             {"question": "Tell me about APR (Automatic Program Repair)"}
-            for _ in range(300)
+            for _ in range(30)
         )
     )
 )  # Run multiple unwrapping list

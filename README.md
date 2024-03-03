@@ -1,9 +1,9 @@
 # HyperChain
 
-**HyperChain** is an easy-to-use and efficient Python library that simplifies interacting with various Large Language Models. It allows for asynchronous execution and chaining of the LLMs using customizable prompt templates.
+**HyperChain** is an easy-to-use and efficient Python library that simplifies interacting with various Large Language Models. It allows for asynchronous execution and chaining of the LLMs with out-of-order execution using customizable prompt templates.
 
 # Installation
-To install HyperChain directly from this GitHub repository, execute the following commands:
+To install HyperChain directly from the GitHub repository, execute the following commands:
 ```bash
 git clone https://github.com/PyRepair/hyperchain.git
 cd hyperchain
@@ -16,7 +16,7 @@ Below are some simple examples to get you started with HyperChain. More detailed
 HyperChain offers templates to create prompts easily for different LLM applications. These templates can be combined using the '+' operator.
 
 ### StringTemplate
-The **StringTemplate** is mainly used with completion models and takes a formatable string as input. In most cases, using a python string is compatible in place of a StringTemplate as it relies on the ```format``` method.
+The **StringTemplate** is mainly used with completion models and takes a formatable string as input. A python string will automatically be wrapped in a StringTemplate by the LLMChain.
 ```python
 from hyperchain.prompt_templates import StringTemplate
 
@@ -43,7 +43,7 @@ from hyperchain.prompt_templates import MaskToSentinelTemplate
 
 template = MaskToSentinelTemplate("{masked_code}")
 
-template.format(masked_code="def greet_user(<mask>: User):\n  print('Hi,' + <mask>)\n")
+print(template.format(masked_code="def greet_user(<mask>: User):\n  print('Hi,' + <mask>)\n"))
 ```
 
 ## LLMRunner
@@ -61,12 +61,14 @@ llm_runner = OpenAIRunner(
 
 **LLMChain** allows using templates to create prompts and send them to a chosen Large-Language Model. It supports asynchronous execution and includes error handling for exceptions identified in each LLMRunner.
 ```python
-from hyperchain.llm_chain import LLMChain
+from hyperchain.chain import LLMChain
 
 chain = LLMChain(
    template=template,
-   llm_runner=runner,
+   llm_runner=llm_runner,
    output_name="answer",
 )
 ```
 The **output_name** argument allows the output from one chain to be used as the input for the next, under a specified name as seen in [example_chain.py](./examples/example_chain.py)
+
+**ChainSequence** is automatically created when Chain instances are added together with the '+' operator. It leverages required_keys and output_keys instance variables of each chain to calculate dependencies and execute the sequence out-of-order where possible.
