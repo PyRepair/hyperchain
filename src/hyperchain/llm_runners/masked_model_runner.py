@@ -9,6 +9,7 @@ class MaskedModelRunner(LLMRunner):
         model,
         tokenizer = None,
         model_kwargs = {},
+        pipeline_parameters = {},
     ):
         if isinstance(model, str):
             self.model = AutoModelForMaskedLM.from_pretrained(model)
@@ -26,11 +27,12 @@ class MaskedModelRunner(LLMRunner):
         else:
             self.tokenizer = tokenizer
 
+        self.pipeline_parameters = pipeline_parameters
         self.model_kwargs = model_kwargs
         self.fill_mask = pipeline('fill-mask', model=self.model, tokenizer=self.tokenizer, model_kwargs=self.model_kwargs)
 
     async def async_run(self, prompt: str):
-        predictions = self.fill_mask(prompt)
+        predictions = self.fill_mask(prompt, **self.pipeline_parameters)
         response = prompt
 
         for prediction in predictions:

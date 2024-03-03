@@ -41,6 +41,19 @@ class MaskToSentinelTemplate(StringTemplate):
         return self._apply_sentinel_tokens(self.formatter.format(self.input_string, **kwargs))
 
     def __add__(self, other: Any) -> Template[str]:
+        if isinstance(other, MaskToSentinelTemplate) or isinstance(StringTemplate):
+            return MaskToSentinelTemplate(
+                self.input_string + other.input_string,
+                self.formatter,
+            )
+        
+        if isinstance(other, str):
+            return MaskToSentinelTemplate(
+                self.input_string + other,
+                self.formatter,
+            )
+        
         raise NotImplementedError(
-            "MaskToSentinelTemplate doesn't support addition yet."
+            "MaskToSentinelTemplate only allows addition"
+            "with another MaskToSentinelTemplate, StringTemplate or str"
         )

@@ -1,5 +1,8 @@
 from typing import Optional
+
 from .llm_runner import LLMRunner, LLMResult
+from .utils import get_api_key_from_env
+
 import requests
 import os
 
@@ -12,15 +15,6 @@ from .error_handler import (
 
 HF_ENV_KEY = "HUGGINGFACEHUB_API_TOKEN"
 
-
-def _get_api_key_from_env() -> str:
-    return (
-        os.environ[HF_ENV_KEY]
-        if HF_ENV_KEY in os.environ and os.environ[HF_ENV_KEY]
-        else ""
-    )
-
-
 class HuggingFaceRunner(LLMRunner):
     api_key: str
     model_args: Optional[dict]
@@ -29,7 +23,7 @@ class HuggingFaceRunner(LLMRunner):
         self,
         model: str = "gpt2",
         json_result_name: str = "generated_text",
-        api_key: str = _get_api_key_from_env(),
+        api_key: str = get_api_key_from_env(HF_ENV_KEY),
         model_args: Optional[dict] = None,
     ):
         self.model = model

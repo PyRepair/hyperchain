@@ -1,6 +1,9 @@
 from typing import Optional, List, Final, Any
+
 from .llm_runner import LLMRunner, LLMResult
 from .response_length_prediction.prediction import predict_response_length
+from .utils import get_api_key_from_env
+
 from openai._exceptions import AuthenticationError, APIError, APIConnectionError
 from openai import AsyncOpenAI
 from dataclasses import dataclass
@@ -14,20 +17,10 @@ from .error_handler import (
 import logging
 import tiktoken
 import asyncio
-import os
 import re
 import time
 
 OPENAI_ENV_KEY = "OPENAI_API_TOKEN"
-
-
-def _get_api_key_from_env() -> str:
-    return (
-        os.environ[OPENAI_ENV_KEY]
-        if OPENAI_ENV_KEY in os.environ and os.environ[OPENAI_ENV_KEY]
-        else ""
-    )
-
 
 UNIT_TO_SECONDS_DICT = {"ms": 0.001, "s": 1, "m": 60, "h": 3600}
 
@@ -341,7 +334,7 @@ class OpenAIRunner(LLMRunner):
 
     def __init__(
         self,
-        api_key: str = _get_api_key_from_env(),
+        api_key: str = get_api_key_from_env(OPENAI_ENV_KEY),
         model: str = "gpt-3.5-turbo-instruct",
         model_params: dict = {},
     ):
@@ -373,7 +366,7 @@ class OpenAIChatRunner(LLMRunner):
 
     def __init__(
         self,
-        api_key: str = _get_api_key_from_env(),
+        api_key: str = get_api_key_from_env(OPENAI_ENV_KEY),
         model: str = "gpt-3.5-turbo",
         model_params: dict = {},
     ):
