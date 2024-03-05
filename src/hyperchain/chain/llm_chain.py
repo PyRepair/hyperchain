@@ -1,7 +1,7 @@
-from typing import List, Any
+from typing import List, Any, Dict
 import logging
 
-from .chain_result import ChainResult
+from .chain_result import ChainResult, ChainResultList
 from .chain import Chain
 from .chain_sequence import ChainSequence
 
@@ -40,9 +40,8 @@ class LLMChain(Chain):
         self.output_keys = [output_name]
         self.required_keys = template.required_keys
 
-    async def async_run(self, **inputs_dict: Any) -> ChainResult:
+    async def _run_with_error_handling(self, task):
         handlers = self.llm_runner._get_error_handlers()
-        prompt = self.template.format(**inputs_dict)
         while True:
             holds_a_lock = False
             try:
@@ -65,7 +64,7 @@ class LLMChain(Chain):
                         holds_a_lock = False
                         self._error_handling_lock.release()
 
-                    result = await self.llm_runner.async_run(prompt)
+                    result = await task
 
                     if not holds_a_lock:
                         async with self._error_handling_lock:
@@ -79,9 +78,8 @@ class LLMChain(Chain):
                         holds_a_lock = False
                         self._rate_limited_state = False
                         self._error_handling_lock.release()
-                    output_dict = inputs_dict
-                    output_dict[self.output_name] = result
-                    return ChainResult(output_dict=output_dict)
+                    
+                    return result
 
                 finally:
                     if holds_a_lock:
@@ -129,6 +127,26 @@ class LLMChain(Chain):
                 if holds_a_lock:
                     holds_a_lock = False
                     self._error_handling_lock.release()
+    
+    async def async_run_multiple(
+        self, *inputs_dict: Dict[str, Any]
+    ) -> List[ChainResult]:
+        prompts = [self.template.format(**inp) for inp in inputs_dict]
+        llm_results = await self._run_with_error_handling(asyncio.create_task(self.llm_runner.run_batch(prompts=prompts)))
+        results = ChainResultList()
+        for llm_result, input_dict in zip(llm_results, inputs_dict):
+            result = ChainResult(input_dict)
+            result.output_dict[self.output_name] = llm_result
+            results.append(result)
+        return results
 
+    async def async_run(self, **inputs_dict: Any) -> ChainResult:
+        handlers = self.llm_runner._get_error_handlers()
+        prompt = self.template.format(**inputs_dict)
+
+        result = ChainResult(output_dict=inputs_dict)
+        result.output_dict[self.output_name] = await self._run_with_error_handling(asyncio.create_task(self.llm_runner.async_run(prompt)))
+        return result
+        
     def __add__(self, other) -> Chain:
         return ChainSequence([self]) + other
