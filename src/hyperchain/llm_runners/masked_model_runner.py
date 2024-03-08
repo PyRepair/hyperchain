@@ -39,6 +39,20 @@ class MaskedModelRunner(LLMRunner):
             response = response.replace('<mask>', prediction[0]['token_str'], 1)
 
         return LLMResult(response, extra_llm_outputs=predictions)
+    
+    async def run_batch(self, prompts):
+        from torch import inference_mode
+        with inference_mode():
+            predictions_list = self.fill_mask(prompts, **self.pipeline_parameters)
+        
+        results = []
+        for prompt, predictions in zip(prompts, predictions_list):
+            response = prompt
+            for prediction in predictions:
+                response = response.replace('<mask>', prediction[0]['token_str'], 1)
+            results.append(LLMResult(response, extra_llm_outputs=predictions))
+
+        return results
 
     def _get_error_handlers(self):
         return []

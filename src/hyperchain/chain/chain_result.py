@@ -12,6 +12,10 @@ class ChainResult:
     def __post_init__(self):
         self.output_dict = deepcopy(self.output_dict)
 
+    def __getstate__(self): return self.output_dict
+
+    def __setstate__(self, state): self.output_dict = state
+
     def __getattr__(self, name):
         if name == "output_dict":
             return self.output_dict
@@ -24,3 +28,12 @@ class ChainResult:
             return str(self.output_dict[name])
         
         return None
+
+
+class ChainResultList(list):
+    def __getstate__(self): return self.__dict__
+
+    def __setstate__(self, state): self.__dict__ = state
+
+    def __getattr__(self, name):
+        return [chain.__getattr__(name) for chain in self]

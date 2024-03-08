@@ -1,4 +1,4 @@
-from .chain_result import ChainResult
+from .chain_result import ChainResult, ChainResultList
 
 from .chain import Chain
 from .chain_sequence import ChainSequence
