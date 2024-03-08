@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 import asyncio
 
-from .chain_result import ChainResult
+from .chain_result import ChainResult, ChainResultList
 from ..prompt_templates import Template
 
 class Chain(ABC):
@@ -27,8 +27,10 @@ class Chain(ABC):
     async def async_run_multiple(
         self, *inputs_dict: Dict[str, Any]
     ) -> List[ChainResult]:
-        return await asyncio.gather(
-            *[self.async_run(**input_list) for input_list in inputs_dict]
+        return await ChainResultList(
+            asyncio.gather(
+                *[self.async_run(**input_list) for input_list in inputs_dict]
+            )
         )
 
     def __add__(self, other: Any) -> Chain:

@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock, patch
 from hyperchain.llm_runners.t5_model_runner import T5ConditionalModelRunner
 
 def test_apply_response():
@@ -18,6 +18,7 @@ def test_apply_response():
     assert result == [[4, 5, 6, 7, 8, 9, 10]]
 
 @pytest.mark.asyncio
+@patch.dict('sys.modules', torch=MagicMock())
 async def test_async_run():
     mocked_model = Mock()
     mocked_tokenizer = Mock()
