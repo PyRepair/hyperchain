@@ -9,7 +9,8 @@ class T5ConditionalModelRunner(LLMRunner):
         model,
         tokenizer = None,
         model_kwargs = {},
-    ):  
+        initial_batch_size = 100,
+    ):
         if isinstance(model, str):
             self.model = T5ForConditionalGeneration.from_pretrained(model)
         else:
@@ -28,6 +29,8 @@ class T5ConditionalModelRunner(LLMRunner):
 
         self.model_kwargs = model_kwargs
         self.sentinel_tokens_set = set(self.tokenizer.convert_tokens_to_ids([token for token in self.tokenizer.additional_special_tokens if "extra_id" in token]))
+
+        self.batch_size = initial_batch_size
 
     def _apply_response(self, prompt, response):
         result = []
@@ -67,16 +70,35 @@ class T5ConditionalModelRunner(LLMRunner):
         decoded_response = self.tokenizer.decode(self._apply_response(input_ids, response)[0], skip_special_tokens=True)
         return LLMResult(decoded_response, extra_llm_outputs={"input_ids": input_ids, "response": response})
     
-    async def run_batch(self, prompts):
-        from torch import inference_mode
+    def _run_batch(self, prompts):
         input_ids_batch  = self.tokenizer(prompts, padding=True, return_tensors="pt").input_ids
-        with inference_mode():
-            responses = self.model.generate(input_ids_batch, **self.model_kwargs)
+        responses = self.model.generate(input_ids_batch, **self.model_kwargs)
         decoded_responses = self.tokenizer.batch_decode(self._apply_response(input_ids_batch, responses), skip_special_tokens=True)
         return [
             LLMResult(decoded_response, extra_llm_outputs={"input_ids": input_ids, "response": response})
             for decoded_response, input_ids, response in zip(decoded_responses, input_ids_batch, responses)
         ]
+    
+    async def run_batch(self, prompts):
+        from torch import inference_mode
+        from torch.cuda import OutOfMemoryError
+        with inference_mode():
+            while True:
+                try:
+                    if len(prompts) <= self.batch_size:
+                        return self._run_batch(prompts)
+                    
+                    result = []
+                    for i in range(0, len(prompts), self.batch_size):
+                        result.extend(self._run_batch(prompts[i:i + self.batch_size]))
+                    return result
+
+                except OutOfMemoryError as e:
+                    if self.batch_size > 1:
+                        self.batch_size //= 2
+                        logging.warning(f"CUDA Run out of memory, reducing batch size to {self.batch_size}.")
+                    else:
+                        raise e
 
 
     def _get_error_handlers(self):
