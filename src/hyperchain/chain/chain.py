@@ -27,8 +27,8 @@ class Chain(ABC):
     async def async_run_multiple(
         self, *inputs_dict: Dict[str, Any]
     ) -> List[ChainResult]:
-        return await ChainResultList(
-            asyncio.gather(
+        return ChainResultList(
+            await asyncio.gather(
                 *[self.async_run(**input_list) for input_list in inputs_dict]
             )
         )
