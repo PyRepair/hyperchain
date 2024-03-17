@@ -120,6 +120,9 @@ class ChainSequence(Chain):
         return previous_result
     
     async def async_run_multiple(self, *inputs_list: Any) -> ChainResult:
+        if len(inputs_list) == 1:
+            return ChainResultList([await self.async_run(**(inputs_list[0]))])
+        
         sequence_elements = chains_to_sequence_elements(self.chains, len(inputs_list))
         
         inputs_list_with_priority = [PriorityDict(inputs_dict, -1) for inputs_dict in inputs_list]

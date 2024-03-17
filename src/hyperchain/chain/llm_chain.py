@@ -29,6 +29,7 @@ class LLMChain(Chain):
         template: Template,
         llm_runner: LLMRunner,
         output_name: str = "result",
+        is_blocked_by_LLMs = True
     ):
         if isinstance(template, str):
             template = StringTemplate(input_string=template)
@@ -37,8 +38,11 @@ class LLMChain(Chain):
         self.llm_runner = llm_runner
         self.output_name = output_name
 
-        self.output_keys = [output_name]
+        self.output_keys = [output_name, "_local_model_blocking"]
+        
         self.required_keys = template.required_keys
+        if is_blocked_by_LLMs and self.required_keys is not None:
+            self.required_keys += ["_local_model_blocking"]
 
     async def _run_with_error_handling(self, task):
         handlers = self.llm_runner._get_error_handlers()

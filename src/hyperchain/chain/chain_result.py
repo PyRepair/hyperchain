@@ -28,6 +28,9 @@ class ChainResult:
             return str(self.output_dict[name])
         
         return None
+    
+    def __getitem__(self, key):
+        return self.output_dict[key]
 
 
 class ChainResultList(list):
@@ -37,3 +40,7 @@ class ChainResultList(list):
 
     def __getattr__(self, name):
         return [chain.__getattr__(name) for chain in self]
+    
+    def __getitem__(self, key):
+        return [chain[key] for chain in self]
+    
